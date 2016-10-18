@@ -46,13 +46,13 @@ def get_ww_index(wd_obj, ud_obj):
 def map_func(weather_data_bc, ud_obj):
     min_size = ud_obj['min_size']
     time_ranges = ud_obj['time_ranges']
-    current_time_range = time_ranges.pop(0)
+    current_min, current_max = time_ranges.pop(0)
 
     wws = []
     current_ww = None
     for wd_obj in weather_data_bc.value:
         ww_time = wd_obj['ww_time']
-        in_range = is_in_ww_range(ww_time, *current_time_range)
+        in_range = is_in_ww_range(ww_time, current_min, current_max)
         if in_range:
             ww_index = get_ww_index(wd_obj, ud_obj)
         if in_range and ww_index > 0.65:
@@ -65,9 +65,9 @@ def map_func(weather_data_bc, ud_obj):
             if current_ww and current_ww['finish'] - current_ww['start'] > min_size:
                 wws.append(current_ww)
                 current_ww = None
-            if ww_time > current_time_range[1]:
+            if ww_time > current_max:
                 try:
-                    current_time_range = time_ranges.pop(0)
+                    current_min, current_max = time_ranges.pop(0)
                 except IndexError:
                     break
     return wws
