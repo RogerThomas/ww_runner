@@ -51,38 +51,40 @@ def get_index(value, min_val, ideal, max_val):
     return max(0, m * value - m * x2)
 
 
+def map_func(weather_data_bc, ud_obj):
+    dts = []
+    for dt, wd_obj in weather_data_bc.value.items():
+        weather_values = dict(
+            rain=wd_obj['rain']['3h'],
+            cloud=wd_obj['clouds']['all'],
+            temp=wd_obj['main']['temp'] - K,
+            wind=wd_obj['wind']['speed'],
+        )
+        index = 0.0
+        weight_sum = 0.0
+        for index_key, weighting in ud_obj['weights'].items():
+            tmp_index = get_index(weather_values[index_key], *ud_obj[index_key])
+            index += (tmp_index * weighting)
+            weight_sum += weighting
+        index /= weight_sum
+        if index > 0.75:
+            dts.append(dt)
+        pd = dict(user_id=ud_obj['user_id'], index=index, wv=weather_values)
+        print('--------------')
+        for key, value in pd.items():
+            print("%s - %s" % (key, value))
+    ret = dict(user_id=ud_obj['user_id'], dts=dts)
+    return ret
+
+
 def main(sc):
     with open('data.json') as fh:
-        weather_data = json.loads(fh.read())
+        weather_data = sorted(json.loads(fh.read()).values(), key=lambda x: x['dt'])
+
     weather_data_bc = sc.broadcast(weather_data)
     user_data_rdd = sc.parallelize(user_data)
 
-    def filter_func(ud_obj):
-        dts = []
-        for dt, wd_obj in weather_data_bc.value.items():
-            weather_values = dict(
-                rain=wd_obj['rain']['3h'],
-                cloud=wd_obj['clouds']['all'],
-                temp=wd_obj['main']['temp'] - K,
-                wind=wd_obj['wind']['speed'],
-            )
-            index = 0.0
-            weight_sum = 0.0
-            for index_key, weighting in ud_obj['weights'].items():
-                tmp_index = get_index(weather_values[index_key], *ud_obj[index_key])
-                index += (tmp_index * weighting)
-                weight_sum += weighting
-            index /= weight_sum
-            if index > 0.75:
-                dts.append(dt)
-            pd = dict(user_id=ud_obj['user_id'], index=index, wv=weather_values)
-            print('--------------')
-            for key, value in pd.items():
-                print("%s - %s" % (key, value))
-        ret = dict(user_id=ud_obj['user_id'], dts=dts)
-        return ret
-
-    result = user_data_rdd.map(filter_func).collect()
+    result = user_data_rdd.map(lambda ud_obj: map_func(weather_data_bc, ud_obj)).collect()
     print(result)
 
 
