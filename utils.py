@@ -1,7 +1,12 @@
 import datetime
+import yaml
 
 K = 273.15
 MAX_TIME = 24 * 7 - 1
+
+def parse_config_file(path):
+    with open(path) as fh:
+        return yaml.load(fh)
 
 
 def dt_to_ww_time(dt):
