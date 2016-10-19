@@ -2,7 +2,7 @@ import json
 import unittest
 import datetime
 
-from utils import is_in_ww_range, map_func
+from utils import is_in_ww_range, map_func, format_data
 
 
 def dt_to_ww_time(dt):
@@ -32,47 +32,38 @@ class TestRunner(unittest.TestCase):
             time_ranges=[(28, 43), (55, 61)],
             min_size=1,
         )
-        with open('data.json') as fh:
-            weather_data = sorted(json.loads(fh.read()).values(), key=lambda x: x['dt'])
-        for item in weather_data:
-            item['ww_time'] = dt_to_ww_time(datetime.datetime.fromtimestamp(item['dt']))
+        with open('tests/data/data.json') as fh:
+            self.weather_data_bc = BCMock(format_data(json.loads(fh.read())))
 
-        self.weather_data_bc = BCMock(weather_data)
-
-    def test_r(self):
-        dt = 1476554400
-        a = datetime.datetime.fromtimestamp(dt)
-        print(a.strftime("%c"))
-        b = datetime.datetime
-        print(a.strftime("%a %H:%M:%S"))
-        print(dt_to_ww_time(a))
-        c = "Sun Oct 16 23:00:00 2016"
-        t = datetime.datetime.strptime(c, "%c")
+    def get_ww_time(self, time_str):
+        return dt_to_ww_time(datetime.datetime.strptime(time_str, "%c"))
 
     def test_time_in_range_normal(self):
         min_val = 7
         max_val = 10
-        ww_time = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 17 08:00:00 2016", "%c"))
+        ww_time = self.get_ww_time("Mon Oct 17 08:00:00 2016")
         self.assertTrue(is_in_ww_range(ww_time, min_val, max_val))
 
     def test_time_in_range_overlap(self):
-        ww_time = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 01:00:00 2016", "%c"))
-        min_val = dt_to_ww_time(datetime.datetime.strptime("Sun Oct 15 23:00:00 2016", "%c"))
-        max_val = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 04:00:00 2016", "%c"))
+        ww_time = self.get_ww_time("Mon Oct 16 01:00:00 2016")
+        min_val = self.get_ww_time("Sun Oct 15 23:00:00 2016")
+        max_val = self.get_ww_time("Mon Oct 16 04:00:00 2016")
         self.assertTrue(is_in_ww_range(ww_time, min_val, max_val))
 
     def test_time_not_in_range_normal(self):
-        ww_time = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 21:00:00 2016", "%c"))
-        min_val = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 04:00:00 2016", "%c"))
-        max_val = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 09:00:00 2016", "%c"))
+        ww_time = self.get_ww_time("Mon Oct 16 21:00:00 2016")
+        min_val = self.get_ww_time("Mon Oct 16 04:00:00 2016")
+        max_val = self.get_ww_time("Mon Oct 16 09:00:00 2016")
         self.assertFalse(is_in_ww_range(ww_time, min_val, max_val))
 
     def test_time_not_in_range_overlap(self):
-        ww_time = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 05:00:00 2016", "%c"))
-        min_val = dt_to_ww_time(datetime.datetime.strptime("Sun Oct 15 23:00:00 2016", "%c"))
-        max_val = dt_to_ww_time(datetime.datetime.strptime("Mon Oct 16 04:00:00 2016", "%c"))
+        ww_time = self.get_ww_time("Mon Oct 16 05:00:00 2016")
+        min_val = self.get_ww_time("Sun Oct 15 23:00:00 2016")
+        max_val = self.get_ww_time("Mon Oct 16 04:00:00 2016")
         self.assertFalse(is_in_ww_range(ww_time, min_val, max_val))
 
     def test_map_func(self):
         got = map_func(self.weather_data_bc, self.ud_obj)
-        print(got)
+        self.assertEqual(
+            got, [{'start': 34, 'finish': 43, 'ww_index': [0.664, 0.68, 0.709]}]
+        )
