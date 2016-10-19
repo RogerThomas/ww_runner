@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from pyspark import SparkConf, SparkContext
-import json
 import utils
 
 K = 273.15
@@ -20,7 +19,7 @@ user_data = [
             temp=0.65,
             cloud=0.1,
         ),
-        time_ranges=[(28, 43), (55, 61)],
+        time_ranges=[(6, 10), (30, 34), (54, 58), (78, 82), (102, 106), (128, 137), (152, 161)],
         min_size=1,
     ),
     dict(
@@ -36,35 +35,23 @@ user_data = [
             temp=0.65,
             cloud=0.1,
         ),
-        time_ranges=[(28, 43), (55, 61)],
+        time_ranges=[(6, 10), (30, 34), (54, 58), (78, 82), (102, 106), (128, 137), (152, 161)],
         min_size=1,
     )
 ]
 
 
-def get_index(value, min_val, ideal, max_val):
-    if value < ideal:
-        x2 = min_val
-    elif value > ideal:
-        x2 = max_val
-    else:
-        return 1
-    try:
-        m = 1.0 / (ideal - x2)
-    except ZeroDivisionError:
-        m = 0
-    return max(0, m * value - m * x2)
-
-
 def main(sc):
-    with open('data.json') as fh:
-        weather_data = utils.format_data(json.loads(fh.read()))
+    file_key = "7beac85e-00a5-48ae-af2a-aaf9a332463b"
+    weather_data = utils.format_data(utils.get_s3_json_file(file_key))
 
     weather_data_bc = sc.broadcast(weather_data)
     user_data_rdd = sc.parallelize(user_data)
 
-    result = user_data_rdd.map(lambda ud_obj: utils.map_func(weather_data_bc, ud_obj)).collect()
-    print(result)
+    results = user_data_rdd.map(lambda ud_obj: utils.map_func(weather_data_bc, ud_obj)).collect()
+    for result in results:
+        print("User: %s" % (result['user_id'],))
+        print(result['wws'])
 
 
 if __name__ == "__main__":

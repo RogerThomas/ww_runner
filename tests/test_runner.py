@@ -29,9 +29,15 @@ class TestRunner(unittest.TestCase):
                 temp=0.65,
                 cloud=0.1,
             ),
-            time_ranges=[(28, 43), (55, 61)],
             min_size=1,
         )
+        time_ranges = []
+        for i in range(5):
+            time_ranges.append((i * 24 + 6, i * 24 + 10))
+        for i in range(5, 7):
+            time_ranges.append((i * 24 + 8, i * 24 + 17))
+        print(time_ranges)
+        self.ud_obj['time_ranges'] = time_ranges
         with open('tests/data/data.json') as fh:
             self.weather_data_bc = BCMock(format_data(json.loads(fh.read())))
 
@@ -64,6 +70,20 @@ class TestRunner(unittest.TestCase):
 
     def test_map_func(self):
         got = map_func(self.weather_data_bc, self.ud_obj)
-        self.assertEqual(
-            got, [{'start': 34, 'finish': 43, 'ww_index': [0.664, 0.68, 0.709]}]
-        )
+        wws = [
+            {
+                'finish_dt': u'2016-10-14 09:00:00',
+                'ww_index': [0.664, 0.734, 0.748],
+                'start': 34,
+                'start_dt': u'2016-10-11 09:00:00',
+                'finish': 106
+            }, {
+                'finish_dt': u'2016-10-15 15:00:00',
+                'ww_index': [0.724, 0.712],
+                'start': 133,
+                'start_dt': u'2016-10-15 12:00:00',
+                'finish': 136
+            }
+        ]
+        expected = dict(user_id=1, wws=wws)
+        self.assertEqual(got, expected)

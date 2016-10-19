@@ -1,12 +1,26 @@
 import datetime
 import yaml
+import boto3
+import json
+
 
 K = 273.15
 MAX_TIME = 24 * 7 - 1
 
+
 def parse_config_file(path):
     with open(path) as fh:
         return yaml.load(fh)
+
+
+def get_config_file():
+    return parse_config_file('config/config.yaml')
+
+
+def get_s3_json_file(key):
+    config = get_config_file()
+    s3 = boto3.client('s3', **config['aws_credentials'])
+    return json.loads(s3.get_object(Bucket='ww-scraper', Key=key)['Body'].read())
 
 
 def dt_to_ww_time(dt):
@@ -45,7 +59,7 @@ def get_index(value, min_val, ideal, max_val):
 
 def get_ww_index(wd_obj, ud_obj):
     weather_dict = dict(
-        rain=wd_obj['rain']['3h'],
+        rain=wd_obj['rain'].get('3h', 0),
         cloud=wd_obj['clouds']['all'],
         temp=wd_obj['main']['temp'] - K,
         wind=wd_obj['wind']['speed'],
@@ -65,6 +79,7 @@ def map_func(weather_data_bc, ud_obj):
     time_ranges = ud_obj['time_ranges']
     current_min, current_max = time_ranges.pop(0)
 
+    ret_obj = dict(user_id=ud_obj['user_id'])
     wws = []
     current_ww = None
     for wd_obj in weather_data_bc.value:
@@ -74,9 +89,12 @@ def map_func(weather_data_bc, ud_obj):
             ww_index = round(get_ww_index(wd_obj, ud_obj), 3)
         if in_range and ww_index > 0.65:
             if current_ww is None:
-                current_ww = dict(start=ww_time, ww_index=[ww_index], finish=ww_time)
+                current_ww = dict(
+                    start=ww_time, ww_index=[ww_index], finish=ww_time,
+                    start_dt=wd_obj['dt_txt'], finish_dt=wd_obj['dt_txt']
+                )
             else:
-                current_ww['finish'] = ww_time
+                current_ww.update(finish=ww_time, finish_dt=wd_obj['dt_txt'])
                 current_ww['ww_index'].append(ww_index)
         else:
             if current_ww and current_ww['finish'] - current_ww['start'] > min_size:
@@ -87,4 +105,5 @@ def map_func(weather_data_bc, ud_obj):
                     current_min, current_max = time_ranges.pop(0)
                 except IndexError:
                     break
-    return wws
+    ret_obj['wws'] = wws
+    return ret_obj
