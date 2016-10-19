@@ -32,8 +32,6 @@ def merge_new_data_into_current_data(current_data, new_data, time_now):
                 current_data[dt] = obj
             else:
                 if obj != current_data[dt]:
-                    print(obj)
-                    print(current_data[dt])
                     current_data[dt] = obj
                     updated_dts.append(obj['dt_txt'])
     return new_dts, updated_dts
@@ -51,9 +49,9 @@ def main():
     tmp_data = json.loads(s3.get_object(Bucket='ww-scraper', Key=FILE_KEY)['Body'].read())
     current_data, deleted_dts = delete_old_dts(tmp_data, now)
     new_dts, updated_dts = merge_new_data_into_current_data(current_data, new_data, now)
+    print("New     dts: %s" % (new_dts,))
     print("Deleted dts: %s" % (deleted_dts,))
     print("Updated dts: %s" % (updated_dts,))
-    print("New     dts: %s" % (new_dts,))
     s3.put_object(Bucket='ww-scraper', Key=FILE_KEY, Body=json.dumps(current_data, indent=4))
 
 
